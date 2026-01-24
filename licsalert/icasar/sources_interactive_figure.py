@@ -58,7 +58,7 @@ def plot_2d_interactive_fig(S_pca, S_hists, mask, spatial, sica_tica,
                                    marker style e.g. (1,0,1,0,0,0,1 etc))) 
                                  and markers (a list of the different 
                                   Matplotlib marker styles e.g. ['o', 'x'])
-        figures | string,  "window" / "png" / "png+window" | controls if 
+        figures | string,  "window" / "png" / "both" | controls if 
                                     figures are produced (either as a window, 
                                                   saved as a png, or both)
         png_path | string | if a png is to be saved, a path to a folder 
@@ -86,6 +86,7 @@ def plot_2d_interactive_fig(S_pca, S_hists, mask, spatial, sica_tica,
         2025_07_10 | MEG | Update the docs.  
     
     """
+
 
         
     import matplotlib.pyplot as plt
@@ -251,7 +252,7 @@ def plot_2d_interactive_fig(S_pca, S_hists, mask, spatial, sica_tica,
 
     # Wait for user input, if there is a window (i.e. don't if making only 
     # a png)
-    if (figures == 'window') or (figures == 'png+window'):
+    if (figures == 'window') or (figures == 'both'):
         while not button_clicked[0]:
             plt.pause(1.)
             print("Waiting for the user to select the ICA sources using the "
