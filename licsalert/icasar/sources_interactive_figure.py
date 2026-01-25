@@ -7,9 +7,7 @@ Created on Thu Jul 25 14:35:36 2024
 """
 
 import pdb
-
-
-#%%
+import numpy as np
 
 
 def plot_2d_interactive_fig(S_pca, S_hists, mask, spatial, sica_tica, 
@@ -279,7 +277,7 @@ def plot_2d_interactive_fig(S_pca, S_hists, mask, spatial, sica_tica,
     
     
 
-#%%
+###############################################################################
 
 def hover(event, axes1, sc_container, fig, xy_tsne, arrow_length, 
           inset_axes_side, sica_tica, S_all_r3, slider_axes, source_axes,
@@ -357,9 +355,13 @@ def hover(event, axes1, sc_container, fig, xy_tsne, arrow_length,
             if sica_tica == 'sica':
                 inset_axes.matshow(S_all_r3[0][point_n,])
             else:
-                raise Exception("Not tested yet.  ")
-                #inset_axes.plot(temporal_data['xvals'], temporal_data['tcs_r2'][point_n,])                            # draw the inset axes time course graph
-                inset_axes.axhline(0)
+                inset_axes.scatter(
+                    np.arange(0, S_all_r3[0].shape[1]),
+                    S_all_r3[0][point_n,],
+                    marker='.',
+                    s=1,
+                    )
+                inset_axes.axhline(0, c='k', alpha=0.5)
                 
             inset_axes.set_xticks([])                                                                                       # and remove ticks (and so labels too) from x
             inset_axes.set_yticks([])                                                                                       # and from y
@@ -377,7 +379,7 @@ def hover(event, axes1, sc_container, fig, xy_tsne, arrow_length,
 
 
 
-#%%
+###############################################################################
 
 def update(val, fig, axes1, slider_a, slider_b, slider_c, slider_d, slider_e, 
            n_pca_comps, S_hists, mask, spatial, sica_tica, 
@@ -411,6 +413,8 @@ def update(val, fig, axes1, slider_a, slider_b, slider_c, slider_d, slider_e,
                                update_tsne)
     (sources_all_r3, S_ica[0], labels_hdbscan, xy_tsne_new, marker_dict, 
      legend_dict, labels_colours, Iq_sorted, n_clusters) = outputs
+    # record all sources (i.e. one source per point) to the mutable.  
+    # n_cols is n_pixels for sica, and n_times for tica
     S_all_r3[0] = sources_all_r3
     # if tsne was not updated, previous function returns None
     if xy_tsne_new is None:
@@ -453,10 +457,14 @@ def update(val, fig, axes1, slider_a, slider_b, slider_c, slider_d, slider_e,
     # get all the sources for the 2d points (depends on n_pca) as row vectors
     if sica_tica == 'sica':
         sources_all_r2, _ = sources_list_to_r2_r3(S_hists[S_index], mask)           
+        # add to mutable that is used at all levels in plot
+        source_outputs['sources_all_r2'] = sources_all_r2
     elif sica_tica == 'tica':
-        raise Exception("Functionality removed.  ")
+        # S_hists is a list for each number of PCs, and then a list
+        # for each ICA run.  For one number of PCs, expand list to an array.  
+        # also add to mutable.  
+        source_outputs['sources_all_r2']  = np.vstack((S_hists[S_index]))
     
-    source_outputs['sources_all_r2'] = sources_all_r2
 
 
     # Remove any previous PCs and ICs (ready to plot updated ones)
@@ -466,21 +474,50 @@ def update(val, fig, axes1, slider_a, slider_b, slider_c, slider_d, slider_e,
         except:
             pass
         
-    # Plot the PCs
-    plot_signals(fig, source_axes, S_pca, mask, 0.5, 0.95, 0.5, 1., title = 'PC', 
-                 legend_dict = None, obscure = n_pca)
-    
-    # Plot the ICs
-    plot_signals(fig, source_axes, S_ica[0], mask, 0.5, 0.95, 0., 0.5, title = 'IC',
-                 legend_dict = legend_dict, obscure = None)
-    fig.canvas.draw_idle()
+    # plot spatial PCs and ICs (sICA) along the right edge of the figure.  
+    if sica_tica == 'sica':
+        # Plot the PCs
+        plot_signals_sica(fig, source_axes, S_pca, mask, 0.5, 0.95, 0.5, 1., title = 'PC', 
+                     legend_dict = None, obscure = n_pca)
+        
+        # Plot the ICs
+        plot_signals_sica(fig, source_axes, S_ica[0], mask, 0.5, 0.95, 0., 0.5, title = 'IC',
+                     legend_dict = legend_dict, obscure = None)
+        fig.canvas.draw_idle()
+        
+    elif sica_tica == 'tica':
+        print("Need to plot PC and IS spaially.  ")   
+        # plot the PCS
+        plot_signals_tica(
+            fig,
+            source_axes,
+            S_pca,                      # cumulative time courses as rows
+            0.5, 0.95, 0.5, 1.,
+            title='PC',
+            legend_dict=None,
+            obscure=n_pca
+            )
+        
+        # Plot the ICS
+        # need to use S_ica[0]
+        plot_signals_tica(
+            fig,
+            source_axes,
+            S_ica[0],                      # cumulative time courses as rows
+            0.5, 0.95, 0., 0.5,
+            title='IC',
+            legend_dict=legend_dict,
+            obscure=None
+            )
     
 
-#%%
+###############################################################################
 
 def on_button_click(event, slider_a, slider_b, slider_c, slider_d, slider_e,
                     button_clicked):
     """
+    Record all slider and buttons to a mutable that can be used at other
+    levels in the function.  
     """
     
     import matplotlib.pyplot as plt
@@ -498,11 +535,14 @@ def on_button_click(event, slider_a, slider_b, slider_c, slider_d, slider_e,
     plt.close()                     
     
     
-#%%
+###############################################################################
 
-def plot_signals(fig, source_axes, r2_signals, mask, x_start, x_stop, y_start, y_stop,
+def plot_signals_sica(fig, source_axes, r2_signals, mask, x_start, x_stop, y_start, y_stop,
                  title, legend_dict = None, obscure = None):
     """
+    Plot a spatial signal on an axes.  Used to plot the ICs and PCs along
+    the right edge of the figure when sICA
+    is used along the 
     """
     from matplotlib.lines import Line2D                                  
     
@@ -566,8 +606,152 @@ def plot_signals(fig, source_axes, r2_signals, mask, x_start, x_stop, y_start, y
                           markersize=10, zorder = 999)
             ax.add_line(line)
 
+###############################################################################
 
-#%%
+def plot_signals_tica(
+           fig,
+           source_axes,
+           r1_signals,                      # cumulative time courses as rows
+           x_start, x_stop, y_start, y_stop,
+           title,
+           legend_dict=None,
+           obscure=None,
+           ):
+        
+    """
+    Plot a temporal signal on an axes.  Used to plot the ICs and PCs along
+    the right edge of the figure when sICA
+    is used along the 
+    """
+    from matplotlib.lines import Line2D                                  
+    
+    from licsalert.aux import col_to_ma
+    
+    n = r1_signals.shape[0]
+    
+    if n <= 0:
+        raise ValueError("Number of subplots must be greater than 0.")
+    if not (0 <= x_start <= 1) or not (0 <= x_stop <= 1):
+        raise ValueError("x_start and x_stop must be between 0 and 1.")
+    if not (0 <= y_start <= 1) or not (0 <= y_stop <= 1):
+        raise ValueError("y_start and y_stop must be between 0 and 1.")
+    if x_start >= x_stop:
+        raise ValueError("x_stop must be greater than x_start.")
+    if y_start >= y_stop:
+        raise ValueError("y_stop must be greater than y_start.")
+    
+    fig_width = x_stop - x_start  
+    fig_height = y_stop - y_start  
+
+    # Number of columns for each row
+    ncols = (n + 1) // 2
+
+    # Width and height of each subplot
+    width = fig_width / ncols
+    height = fig_height / 2
+
+    for i in range(n):
+        # determine if it should have low opacity:
+        opacity = 1.
+        if obscure is not None:
+            if i >= obscure:
+                opacity = 0.5
+        
+        row = i // ncols
+        col = i % ncols
+        left = x_start + col * width
+        bottom = y_start + (1 - (row + 1) / 2) * fig_height  
+
+        ax = fig.add_axes([left, bottom, width, height])
+        if ax not in source_axes:
+            source_axes.append(ax)
+            
+        #ax.set_title(f'Subplot {i+1}')
+        # mat = ax.matshow(col_to_ma(r2_signals[i, :], mask),
+        #                  alpha = opacity)
+        #ax.plot(r1_signals[i,:], alpha=opacity)
+        ax.scatter(
+            np.arange(r1_signals.shape[1]),
+            r1_signals[i,:], 
+            alpha=opacity,
+            marker='.',
+            s=1     
+            )
+        # ax.set_xticks([])
+        # ax.set_yticks([])
+        ax.set_xticklabels([])
+            
+        # --- Gridlines ---
+        ax.grid(
+            True,
+            which="both",
+            linestyle="--",
+            linewidth=0.5,
+            alpha=0.5
+        )
+        ax.set_axisbelow(True)
+        
+        # --- Ticks inside ---
+        ax.tick_params(
+            axis="both",
+            which="both",
+            direction="in",
+            pad=-30,          # negative = labels inside
+            length=4
+        )
+        
+
+        # ax.text(0.05, 0.95,
+        #         f"   {title}{i}",
+        #         transform=ax.transAxes, 
+        #         ha='center',
+        #         fontsize=12,
+        #         verticalalignment='top', 
+        #         bbox=dict(
+        #             boxstyle="round,pad=0.3",
+        #             edgecolor='black', 
+        #             facecolor='white',
+        #             )
+        #         )
+        
+        
+        # Possibly add dot showing which cluster source came from
+        # if legend_dict is not None:
+        #     cluster_col = legend_dict['elements'][i].get_markerfacecolor()
+        #     line = Line2D([4], [3], marker='o', color=cluster_col, 
+        #                   markersize=10, zorder = 999)
+        #     ax.add_line(line)
+        
+        # Title box
+        x0, y0 = 0.05, 0.95
+        ax.text(
+            x0, y0, f"    {title}{i}",
+            transform=ax.transAxes,
+            ha="left", va="top",
+            fontsize=12,
+            bbox=dict(boxstyle="round,pad=0.3",
+                      edgecolor="black",
+                      facecolor="white")
+        )
+        
+        # Dot inside the same box (axes coords)
+        if legend_dict is not None:
+            cluster_col = legend_dict['elements'][i].get_markerfacecolor()
+            ax.scatter(
+                [x0 + 0.015], [y0 - 0.03],       # tweak offsets as needed
+                transform=ax.transAxes,
+                s=30,
+                marker="o",
+                facecolors=cluster_col,
+                edgecolors="black",              # optional
+                linewidths=0.5,                  # optional
+                zorder=1000,
+                clip_on=False
+            )
+        
+
+
+###############################################################################
 
 def remove_axes2_and_arrow(fig, axes1, slider_axes, source_axes, button_axes):
     """ Given a figure that has a second axes and an annotation arrow due to a 
@@ -604,7 +788,7 @@ def remove_axes2_and_arrow(fig, axes1, slider_axes, source_axes, button_axes):
     fig.canvas.draw_idle()                                          
 
 
-#%%
+###############################################################################
 
 def calculate_insetaxes_offset(lims, points, offset_length):
     """

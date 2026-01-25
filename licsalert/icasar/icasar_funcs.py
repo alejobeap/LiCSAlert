@@ -431,9 +431,9 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             load_fastICA_results = False
     if not load_fastICA_results:
        print(f"No results were found for the multiple ICA runs, so these will now be performed.  ")
-       # initiliase to store
+       # initiliase to store, 
        S_hists = []
-       A_hists = []
+       A_hists = []         
        #  +1 to make upper limit inclusive
        for n_comp in np.arange(n_pca_comp_start, n_pca_comp_stop + 1):
            print(f"\n\nStarting the multiple ICA runs with {n_comp} "
@@ -459,7 +459,7 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             n_pixels_loaded = S_hists[0][0].shape[1]
         elif sica_tica == 'tica':
             # if it's temporal, images are columns in A
-            n_pixels_loaded = A_hist[0].shape[0]                                                                
+            n_pixels_loaded = A_hists[0][0].shape[0]                                                                
         # check that the number of pixels in an image is correct
         # (often get errors here as data could be loaded after settings were chnaged
         if n_pixels_loaded != np.sum(1-spatial_data['mask']):
@@ -493,14 +493,17 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             
         
         if sica_tica == 'sica':
+            # A is time course as column, S is image as row?  
             S_ica, source_outputs = plot_2d_interactive_fig(
                 S_pca, S_hists, mask, spatial, sica_tica, hdbscan_param,
                 tsne_param, n_converge_bootstrapping, n_converge_no_bootstrapping,
                 inset_axes_side = inset_axes_side, 
                 fig_filename = plot_2d_labels['title'], **fig_kwargs)
         elif sica_tica == 'tica':
+            # S is time course as row, A is image as column
+            # S_pca_cum is time course as row
                 S_ica, source_outputs = plot_2d_interactive_fig(
-                    A_pca, S_hists, mask, spatial, sica_tica, hdbscan_param,
+                    S_pca_cum, S_hists, mask, spatial, sica_tica, hdbscan_param,
                     tsne_param, n_converge_bootstrapping, n_converge_no_bootstrapping,
                     inset_axes_side = inset_axes_side, 
                     fig_filename = plot_2d_labels['title'], **fig_kwargs)
@@ -558,7 +561,7 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             A_ica = inversion_results[0]['tcs']                                                                                                                   # in tICA, spatial sources are row vector (ie these are the images)
             source_residuals = inversion_results[0]['residual']                                                                                                   # how well the cumulative time courses are fit?  Not clear.  
             if fig_kwargs['figures'] != "none":
-                outupts = two_spatial_signals_plot(
+                outputs = two_spatial_signals_plot(
                     A_ica,
                     spatial_data['mask'],
                     spatial_data['dem'],                          
