@@ -282,6 +282,9 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             )
 
         # also create the cumualtive ifgs (relative to the first acq.  )
+        # note that this is not relative to the 0th acquistiion, so it does
+        # not have an image that is all zeros at the start.  That is as 
+        # those create maths errors when performing PCA/ICA.  
         ifgs_cum_r2, ifg_dates_cum = create_cumulative_ifgs(
             spatial_data['ifgs_dc'],
             spatial_data['ifg_dates_dc']
@@ -301,7 +304,7 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             ifg_dates_cum,
             )      
         
-        del ifgs_all_r2, ifg_dates_all, ifgs_cum_r2, ifg_dates_cum
+        del ifgs_all_r2, ifg_dates_all, ifg_dates_cum
         
         if sica_tica == 'sica':
             X_mean = ifgs_dc.means_space                                                                                                # daisy chain ifgs are supplied, so only interested in returning daisy chain means.  
@@ -312,9 +315,25 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
                 X_mc = ifgs_dc.mixtures_mc_space                                                                                        # or just the incremental (daisy chain) ifgs.....
             elif ifgs_format == 'cum':
                 X_mc = ifgs_cum.mixtures_mc_space                                                                                       # or the cumulative (single master) ifgs.  
-        elif sica_tica == 'tica':                                                                                                       # if we're doing temporal ica with spatial data, the mixtures need to be the transpose
-            X_mc = ifgs_cum.mixtures_mc_time.T                                                                                          # as cumulative and transpose, effectively the time series for each point.  
-            X_mean = ifgs_cum.means_time
+        elif sica_tica == 'tica':    
+            # Always use the cumualtive signals if tica.  
+            # However, as sICA is the standard, the cumulative data doesn't
+            # actually have the first image of zeros (for acquisition 0).  
+            # We need to add this back before mean centering in time.                                                                                                   
+            ifgs_cum_r2_tica = np.vstack((
+                np.zeros((1, ifgs_cum_r2.shape[1])),
+                ifgs_cum_r2,
+                ))
+            ifgs_cum_r2_mean = np.mean(ifgs_cum_r2_tica, axis=0)
+            ifgs_cum_r2_tica_mc = ifgs_cum_r2_tica - ifgs_cum_r2_mean
+            
+            # old implementation
+            # X_mc = ifgs_cum.mixtures_mc_time.T                                                                                          # as cumulative and transpose, effectively the time series for each point.  
+            # X_mean = ifgs_cum.means_time
+            # 2026 update, should be n_pixels x n_acqs
+            X_mc = ifgs_cum_r2_tica_mc.T
+            X_mean = ifgs_cum_r2_mean
+            
     else:
         X = temporal_data['mixtures_r2']
         X_mean = np.mean(X, axis = 1)[:,np.newaxis]                                                                                     # get the mean for each ifg (ie along rows.  )
@@ -401,13 +420,14 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
             elif sica_tica == 'tica':
                 A_pca = A_pca[:, :n_pca_comp_stop]
                 S_pca_cum = S_pca_cum[:n_pca_comp_stop, :]
-                S_pca_dc = np.diff(S_pca_cum, axis = 1, prepend = 0)                                                                    
+                # S_pca_dc = np.diff(S_pca_cum, axis = 1, prepend = 0)                                                                    
+                S_pca_dc = np.diff(S_pca_cum, axis = 1)
                 two_spatial_signals_plot(
                     A_pca.T, spatial_data['mask'], 
                     spatial_data['dem'], 
                     S_pca_dc.T, S_pca_cum.T, 
                     ifgs_dc.t_baselines, 
-                    ifgs_cum.t_baselines,                            
+                    [0] + ifgs_cum.t_baselines,                            
                     f"02_PCA_{n_pca_comp_stop}_components", 
                     spatial_data['ifg_dates_dc'], 
                     fig_kwargs,
@@ -554,10 +574,28 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
                 (dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons)=outputs
                 
         elif sica_tica == 'tica':
-            S_ica_cum = S_ica                                                                                                                                     # if temporal, sources are time courses, and are for the cumulative ifgs (as the transpose of these was given to the ICA function).  Note that these each have a mean of 0
-            S_ica_dc = np.diff(S_ica_cum, axis = 1, prepend = 0)                                                                                                  # the diff of the cumluative time courses is the incremnetal (daisy chain) time course.  Prepend a 0 to make it thesame size as the original diays chain (ie. the capture the difference between 0 and first value).  Note that these are no longer each mean centered
+            #pdb.set_trace()
+            # Debug: plot tcs
+            # for n, tc in enumerate(S_ica_cum):
+            #     f, axes = plt.subplots(1,2)
+            #     axes[0].plot(tc)
+            #     axes[1].plot(np.cumsum(tc))
+            #     for ax in axes:
+            #         ax.grid(True)
+
+            S_ica_cum = S_ica            
+            # S_ica_cum = np.hstack((
+            #     np.zeros((S_ica.shape[0], 1)),
+            #     S_ica,
+            #     ))
+                                                                                                            # if temporal, sources are time courses, and are for the cumulative ifgs (as the transpose of these was given to the ICA function).  Note that these each have a mean of 0
+            S_ica_dc = np.diff(S_ica_cum, axis = 1)
             del S_ica           
-            inversion_results = bss_components_inversion(S_ica_cum, [ifgs_cum.mixtures_mc_time.T])                                                                # inversion to fit the time series for each pixel (why it's the transpose), using the sources which are time courses (as its tICA).  Note that eveything here is mean centered in time
+            
+            
+            #inversion_results = bss_components_inversion(S_ica_cum, [ifgs_cum.mixtures_mc_time.T])                                                                # inversion to fit the time series for each pixel (why it's the transpose), using the sources which are time courses (as its tICA).  Note that eveything here is mean centered in time
+            # 2026 edit - 
+            inversion_results = bss_components_inversion(S_ica_cum, [ifgs_cum_r2_tica_mc.T])        # 
             A_ica = inversion_results[0]['tcs']                                                                                                                   # in tICA, spatial sources are row vector (ie these are the images)
             source_residuals = inversion_results[0]['residual']                                                                                                   # how well the cumulative time courses are fit?  Not clear.  
             if fig_kwargs['figures'] != "none":
@@ -568,11 +606,11 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
                     S_ica_dc.T,
                     S_ica_cum.T,
                     ifgs_dc.t_baselines,
-                    ifgs_cum.t_baselines,
+                    [0] + ifgs_cum.t_baselines,
                     "03_ICA_sources",
                     spatial_data['ifg_dates_dc'],
                     fig_kwargs
-                    )                    
+                    )      
                 
                 (dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons)=outputs
                 
@@ -681,8 +719,8 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
                 return A_ica, S_ica_dc.T, source_residuals, Iq_sorted, n_clusters, S_all_info, X_mean, label_sources_output
             else:
                 return A_ica, S_ica_dc.T, source_residuals, Iq_sorted, n_clusters, S_all_info, X_mean
-        
-    else:                                                                       # if temporal data, no mask to save
+    # if temporal data, no mask to save
+    else:                                                                       
         with open(out_folder / 'ICASAR_results.pkl', 'wb') as f:
             pickle.dump(S_ica, f)
             pickle.dump(A_ica, f)
@@ -1018,8 +1056,14 @@ def perform_multiple_ICA_runs(n_comp, mixtures_mc, bootstrapping_param, ica_para
         print(f"FastICA progress with bootstrapping: ", end = '')
     while n_ica_converge < n_converge_bootstrapping:
         # this can be slow as PCA is run each time
-        S, A, ica_converged = bootstrap_ICA(mixtures_mc, n_comp, bootstrap = True, 
-                                            ica_param = ica_param, verbose = ica_verbose)                
+        # note that for tICA, S are cumulative time courses.  
+        S, A, ica_converged = bootstrap_ICA(
+            mixtures_mc,
+            n_comp,
+            bootstrap = True, 
+            ica_param = ica_param,
+            verbose = ica_verbose,
+            )
         if ica_converged:
             n_ica_converge += 1
             # record results
@@ -1046,7 +1090,6 @@ def perform_multiple_ICA_runs(n_comp, mixtures_mc, bootstrapping_param, ica_para
                                             X_whitened = mixtures_white, 
                                             dewhiten_matrix = dewhiten_matrix, 
                                             verbose = ica_verbose)               
-        
         if ica_converged:
             n_ica_converge += 1
             # record results

@@ -1084,11 +1084,15 @@ def bss_components_inversion_per_epoch(
         cumulative=True
         ):
     """
+    Fit ifgs epoch by epoch using the sources.  This is done epoch by epoch
+    so that it works with data that is masked differently at each epoch.  This
+    requires the function to solve for the pixels that are not masked in both
+    the interferogam and in the sources, and then invert for just those.  
     
     Inputs:
         sources | n_ics x n_pixels | sources to fit the ifgs with as row vectors
         mask_sources | ny  x nx | to convert row vector IC to images.  
-        ifgs x n_times x ny x nx | ifgs as images.  
+        ifgs x n_times x ny x nx | ifgs as images, masked array
     
     
     Returns:
@@ -1159,10 +1163,7 @@ def bss_components_inversion_per_epoch(
         d_hat[epoch_n,] = d_hat_cur_r2
         d_resid[epoch_n,] = d_resid_cur_r2
         
-        
-        
-        
-        
+     
     return tcs_c, d_hat, d_resid
 
 
@@ -1568,6 +1569,7 @@ def load_or_create_ICASAR_results(
         2021_10_15 | MEG | Written.  
         2023_04_03 | MEG | Add return of ICASAR label_sources_output
         2023_12_20 | MEG | Remove functions to determine acq_n of baseline end date.  
+        2026_01_31 | MEG | Also return time courses
     """
 
     from licsalert.icasar.icasar_funcs import ICASAR
@@ -1589,6 +1591,8 @@ def load_or_create_ICASAR_results(
         print(f"Means for each column of the tcs (these should be time courses): {tcs_means}")
       
     
+    
+    
     if run_ICASAR:
         print(f"\nRunning ICASAR.")                                      
         
@@ -1601,6 +1605,7 @@ def load_or_create_ICASAR_results(
             'lats'          : displacement_r2['lats_mg'],
             'ifg_dates_dc'  : tbaseline_info['ifg_dates'][:(baseline_end.acq_n+1)]
             }
+        
         if 'dem' in displacement_r2.keys():
             spatial_ICASAR_data['dem'] = displacement_r2['dem']
         
@@ -1613,6 +1618,7 @@ def load_or_create_ICASAR_results(
             label_sources = True
         )
         
+        # if tiCA, tcs are not cumulative.  
         (sources, tcs, residual, Iq, n_clusters, S_all_info, r2_ifg_means, 
         ics_labels ) = outputs; del outputs
         
@@ -1639,10 +1645,8 @@ def load_or_create_ICASAR_results(
             ics_labels = pickle.load(f_icasar)
         f_icasar.close()                                                                                                                           
     
-    return sources, mask_sources,  ics_labels
+    return sources, mask_sources,  ics_labels, tcs
 
-
-#%%
 
 
 class licsalert_date_obj:

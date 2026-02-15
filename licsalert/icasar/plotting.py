@@ -51,13 +51,13 @@ def two_spatial_signals_plot(
     
     # 1: First figure is just sources and their cumulative time courses
     # note that this uses incremental (daisy chain) time courses and integrates them
-    try:
-        plot_spatial_signals(images.T, mask, tcs_dc.T, mask.shape, 
-                             title = f"{title}_time", temporal_baselines = t_baselines_dc,                                     
-                              ifg_dates_dc = ifg_dates_dc, **fig_kwargs)                      
-    except:
-        print(f"Failed to plot the signals and their cumualive time courses.  "
-              f"Continuing.")
+    # try:
+    plot_spatial_signals(images.T, mask, tcs_dc.T, mask.shape, 
+                         title = f"{title}_time", temporal_baselines = t_baselines_dc,                                     
+                          ifg_dates_dc = ifg_dates_dc, **fig_kwargs)                      
+    # except:
+    #     print(f"Failed to plot the signals and their cumualive time courses.  "
+    #           f"Continuing.")
 
     # 2: Second figure may have access to all interfergram time courses and 
     #     temporal baselines, but may also not.          
@@ -65,20 +65,21 @@ def two_spatial_signals_plot(
         temporal_data = {'tcs'                : tcs_all,
                          'temporal_baselines' : t_baselines_all}
     else:
+        # if we don't, just use the daisy chain ifo
         temporal_data = {'tcs'                : tcs_dc,
                          'temporal_baselines' : t_baselines_dc}
         
-    try:
+    #try:
     # figure of IC to DEM correlations, and cumulative time courses 
-        outputs  = dem_and_temporal_source_figure(
-            images, mask, fig_kwargs, dem, 
-            temporal_data, 
-            fig_title = f"{title}_correlations",
-            )        
-        (dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons) = outputs
-    except:
-        raise Exception(f"Failed to plot the signals and their correlations "
-                        "with the DEM and in time.  Exiting.  ")
+    outputs  = dem_and_temporal_source_figure(
+        images, mask, fig_kwargs, dem, 
+        temporal_data, 
+        fig_title = f"{title}_correlations",
+        )        
+    (dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons) = outputs
+    # except:
+    #     raise Exception(f"Failed to plot the signals and their correlations "
+    #                     "with the DEM and in time.  Exiting.  ")
                                                                                                                                                                                             # also note that it now returns information abou the sources and correlatiosn (comparison to the DEM, and how they're used in time.  )
     return dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons
 

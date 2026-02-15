@@ -368,7 +368,8 @@ def create_all_ifgs(ifgs_r2, ifg_dates, max_n_all_ifgs = 1000):
 #%%
 
 def create_cumulative_ifgs(ifgs_dc, ifg_dates_dc):
-    """ Given a time series of incremental (daisy chain) interferograms, calculate the cumulative interferograms  relative to the first acquisition.  
+    """ Given a time series of incremental (daisy chain) interferograms, 
+    calculate the cumulative interferograms  relative to the first acquisition.  
     Inputs:
         ifgs_dc | rank 2 array | ifgs as row vectors.  
         ifg_dates_dc | list | list of YYYYMMDD_YYYYMMDD 

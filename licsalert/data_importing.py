@@ -694,13 +694,20 @@ def LiCSBAS_to_LiCSAlert(LiCSBAS_out_folder, filtered = False, figures = False,
         #initiliase to store the 3 masks
         masks={}
         
+        
         # 1: LiCSBAS mask
         # this is 1 for coherenct pixels, 0 for non-coherent/water, and masked for water
         mask_licsbas = read_img(
             licsbas_mask_path, 
             length,
             width
-            )                   
+            )        
+        
+        # debug plot
+        # import matplotlib.pyplot as plt
+        # f, ax = plt.subplots()
+        # ax.matshow(mask_licsbas)
+           
         # add any nans to the mask
         mask_licsbas = np.logical_and(
             mask_licsbas, np.invert(np.isnan(mask_licsbas))

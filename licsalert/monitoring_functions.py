@@ -281,7 +281,9 @@ def LiCSAlert_monitoring_mode(
             volcano_dir / "ICASAR_results", 
             icasar_settings
         )        
-        (icasar_sources, mask_icasar, ics_labels) = outputs; del outputs
+        # unused return are time courses (tcs)
+        (icasar_sources, mask_icasar, ics_labels, _) = outputs; del outputs
+        
 
         # 4c: Loop through each monitoring date to run LiCSAlert
         processing_dates = []
