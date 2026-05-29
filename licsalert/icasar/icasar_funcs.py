@@ -130,6 +130,7 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
     from licsalert.icasar.plotting import r2_arrays_to_googleEarth
     from licsalert.icasar.plotting import plot_pca_variance_line, plot_temporal_signals
     from licsalert.icasar.plotting import two_spatial_signals_plot
+    from licsalert.icasar.plotting import two_spatial_signals_plot_labels
     from licsalert.icasar.sources_interactive_figure import plot_2d_interactive_fig
     
     # debug to plot input time series dates
@@ -653,6 +654,28 @@ def ICASAR(n_pca_comp_start, n_pca_comp_stop,
                         label_sources_output['labels'][source_n, 2] = 1                                                                 # label as turbulent (column 2)
                     print(f"Source {source_n}: {label_sources_output['source_names'][np.argmax(label_sources_output['labels'][source_n])]}")
                 print(f"\n")
+                # Crear lista de nombres por fuente (ordenados como las ICs)
+                source_labels_str = [
+                           label_sources_output['source_names'][np.argmax(label_sources_output['labels'][i])]
+                           for i in range(n_sources)
+                 ]
+
+                 # Re-generar figura con etiquetas
+                 outputs = two_spatial_signals_plot(
+                     S_ica,
+                     spatial_data['mask'],
+                     spatial_data['dem'], 
+                     A_ica_dc,
+                     A_ica_all,
+                     ifgs_dc.t_baselines,
+                     ifgs_all.t_baselines,
+                     "03_ICA_sources_labeled",   # nuevo nombre de archivo
+                     spatial_data['ifg_dates_dc'],
+                     fig_kwargs,
+                     source_labels=source_labels_str   #LABELS
+                 )
+
+     
                 
             else:
                 print(f"'label_sources' is only supported with spatial data.  Setting this to False and trying to conitnue.  ")           # labelling of sources is intended for use with time series of intererograms and not temporal data.  
