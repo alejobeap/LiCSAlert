@@ -51,7 +51,7 @@ def two_spatial_signals_plot_labels(
     # 1: First figure is just sources and their cumulative time courses
     # note that this uses incremental (daisy chain) time courses and integrates them
     # try:
-    plot_spatial_signals_labels(images.T, mask, tcs_dc.T, mask.shape, 
+    plot_spatial_signals(images.T, mask, tcs_dc.T, mask.shape, 
                          title = f"{title}_time", temporal_baselines = t_baselines_dc,                                     
                           ifg_dates_dc = ifg_dates_dc, source_labels=source_labels, **fig_kwargs)                      
     # except:
@@ -70,7 +70,7 @@ def two_spatial_signals_plot_labels(
         
     #try:
     # figure of IC to DEM correlations, and cumulative time courses 
-    outputs  = dem_and_temporal_source_figure_labels(
+    outputs  = dem_and_temporal_source_figure(
         images, mask, fig_kwargs, dem, 
         temporal_data, 
         fig_title = f"{title}_correlations", source_labels=source_labels,
@@ -164,7 +164,7 @@ def two_spatial_signals_plot(
   
 #%%
 def plot_spatial_signals(spatial_map, pixel_mask, tcs, shape, title, ifg_dates_dc, 
-                         temporal_baselines, figures = "window",  png_path = './'):
+                         temporal_baselines, figures = "window",  png_path = './',source_labels=None):
     """
     Input:
         spatial map | pxc matrix of c component maps (p pixels) (i.e. images are column vectors)
@@ -305,6 +305,12 @@ def plot_spatial_signals(spatial_map, pixel_mask, tcs, shape, title, ifg_dates_d
         ax_source.set_xticks([])
         ax_source.set_yticks([])
 
+        
+        if source_labels is not None:
+            ax_source.set_title(f"{source_labels[i]}", fontsize=10)
+        else:
+            ax_source.set_title(f"IC {i}", fontsize=10)
+
         linegraph(np.cumsum(tcs[i,:]), ax_ctc, temporal_baselines)
         if i != (n_sources-1):
             xticks_every_3months(ax_ctc, day0_date, np.cumsum(temporal_baselines), include_tick_labels = False)                     # no tick labels
@@ -353,7 +359,7 @@ def dem_and_temporal_source_figure(
         dem = None,
         temporal_data = None,
         fig_title = None,
-        max_pixels = 1000
+        max_pixels = 1000, source_labels=None
         ):
     """ Given sources recovered by a blind signal separation method (e.g. PCA or ICA) compare them in space to hte DEM,
     and in time to the temporal baselines.  
@@ -448,7 +454,7 @@ def dem_and_temporal_source_figure(
         dem_ma,
         dem_to_sources_comparisons,
         tcs_to_tempbaselines_comparisons,
-        fig_title=fig_title,
+        fig_title=fig_title, source_labels=source_labels,
         **fig_kwargs
         )
     
@@ -467,7 +473,7 @@ def plot_source_tc_correlations(
         tcs_to_tempbaselines_comparisons = None,
         png_path = './',
         figures = "window",
-        fig_title = None
+        fig_title = None, source_labels=None,
         ):
     """Given information about the ICs, their correlations with the DEM, and 
     their time courses correlations with an intererograms temporal basleine, 
@@ -541,7 +547,13 @@ def plot_source_tc_correlations(
         im = axes[0,ic_n+1].matshow(col_to_ma(sources[ic_n,:], mask), cmap = ifg_colours_cent, vmin = np.min(sources), vmax = np.max(sources))
         axes[0,ic_n+1].set_xticks([])
         axes[0,ic_n+1].set_yticks([])
-        axes[0,ic_n+1].set_title(f"Source {ic_n}")
+        #axes[0,ic_n+1].set_title(f"Source {ic_n}")
+        
+        if source_labels is not None:
+            axes[0,ic_n+1].set_title(source_labels[ic_n])
+        else:
+            axes[0,ic_n+1].set_title(f"IC {ic_n}")
+
         
         # 2B: Plotting the IC to DEM scatter, if the data are available
         if dem_to_ic_comparisons is not None:
