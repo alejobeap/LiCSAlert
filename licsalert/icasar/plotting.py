@@ -8,6 +8,82 @@ Created on Fri Oct 20 11:41:16 2023
 
 import pdb
 
+
+def two_spatial_signals_plot_labels(
+        images,
+        mask,
+        dem,
+        tcs_dc,
+        tcs_all,
+        t_baselines_dc,
+        t_baselines_all,
+        title,
+        ifg_dates_dc,
+        fig_kwargs, source_labels=None,
+        ):
+    """
+    Product the two plots that show spatial sources (comparison to DEM 
+     and ifg baseline, and then sources and cumulative time courses).  
+    Note that this figure doesn't mind if we are working spatially or 
+    temporally - it just plots what it is given.  
+    
+    Inputs:
+        images | n_images x n_pixels | spatial signals as row vectors.  
+        mask | boolean rank 2 |         mask to convert row vector to a masked array.  
+        dem | rank 2 masked array |         The DEM.  Used to compare spatial signals to it.  
+        tcs_dcs | n_times x n_images      | daisy chain time courses.  
+        tcs_all | n_all_ifgs x n_images or None  | time courses if we have made all possible ifg pairs.  None if not available.  
+        t_baselines_dc | n_times         | temporal baselines for the diasy chain interferograms.  
+        t_baselines_all | n_all_ifgs     | temporal baselines for all possible ifg pairs, None if not available.  
+        title | string | figure title
+        fig_kwargs | dict | see other functions.  
+    Returns:
+        2 figures
+        dem_to_sources_comparisons | dict | results of comparison between spatial sources and DEM.  xyzs: x and y and colours for each point from kernel density estimate, line_xys | list | xy points for line of best fit. corr_coefs | pearson correlation coefficeint for points.  
+        tcs_to_tempbaselines_comparisons | dict | as above, but correlations between temporal baselines and time courses (ie if long temrpoal baseline, is component used strongly.  )
+       
+    History:
+        2021_11_23 | MEG | Written
+        2022_01_14 | MEG | Add return of comparison dicts.  
+        
+    """
+    
+    # 1: First figure is just sources and their cumulative time courses
+    # note that this uses incremental (daisy chain) time courses and integrates them
+    # try:
+    plot_spatial_signals_labels(images.T, mask, tcs_dc.T, mask.shape, 
+                         title = f"{title}_time", temporal_baselines = t_baselines_dc,                                     
+                          ifg_dates_dc = ifg_dates_dc, source_labels=source_labels, **fig_kwargs)                      
+    # except:
+    #     print(f"Failed to plot the signals and their cumualive time courses.  "
+    #           f"Continuing.")
+
+    # 2: Second figure may have access to all interfergram time courses and 
+    #     temporal baselines, but may also not.          
+    if t_baselines_all is not None:
+        temporal_data = {'tcs'                : tcs_all,
+                         'temporal_baselines' : t_baselines_all}
+    else:
+        # if we don't, just use the daisy chain ifo
+        temporal_data = {'tcs'                : tcs_dc,
+                         'temporal_baselines' : t_baselines_dc}
+        
+    #try:
+    # figure of IC to DEM correlations, and cumulative time courses 
+    outputs  = dem_and_temporal_source_figure_labels(
+        images, mask, fig_kwargs, dem, 
+        temporal_data, 
+        fig_title = f"{title}_correlations", source_labels=source_labels,
+        )        
+    (dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons) = outputs
+    # except:
+    #     raise Exception(f"Failed to plot the signals and their correlations "
+    #                     "with the DEM and in time.  Exiting.  ")
+                                                                                                                                                                                            # also note that it now returns information abou the sources and correlatiosn (comparison to the DEM, and how they're used in time.  )
+    return dem_to_sources_comparisons, tcs_to_tempbaselines_comparisons
+
+
+
 #%%
 
 def two_spatial_signals_plot(
