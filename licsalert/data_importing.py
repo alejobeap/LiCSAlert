@@ -597,6 +597,7 @@ def LiCSBAS_to_LiCSAlert(
         figures=False,
         crop_pixels=None,
         crop_pixels_geo=None,  # clip de acuerdo a un lon1,lon2,lat1,lat2
+        crop_side_length=None,   # SImilar of JSON files
         mask_type='nan_variable',
         date_start=None,
         date_end=None
